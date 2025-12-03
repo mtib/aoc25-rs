@@ -1,47 +1,49 @@
-use std::cell::RefCell;
-
 pub trait Benchmarker {
-    fn start_benchmark(&self);
-    fn end_benchmark(&self);
+    fn start_benchmark(&mut self);
+    fn end_benchmark(&mut self);
     /// Returns the benchmark time in milliseconds
     fn elapsed_ms(&self) -> Option<f64>;
+    fn n(&self) -> usize;
 }
 
 pub struct SimpleBenchmarker {
-    start_time: RefCell<Option<std::time::Instant>>,
-    end_time: RefCell<Option<std::time::Instant>>,
+    start_time: Option<std::time::Instant>,
+    durations: Vec<std::time::Duration>,
 }
 
 impl SimpleBenchmarker {
     pub fn new() -> Self {
         Self {
-            start_time: RefCell::new(None),
-            end_time: RefCell::new(None),
+            start_time: None,
+            durations: vec![],
         }
     }
 }
 
 impl Benchmarker for SimpleBenchmarker {
-    fn start_benchmark(&self) {
-        self.start_time
-            .borrow_mut()
-            .replace(std::time::Instant::now());
+    fn start_benchmark(&mut self) {
+        self.start_time = Some(std::time::Instant::now());
     }
 
-    fn end_benchmark(&self) {
-        self.end_time
-            .borrow_mut()
-            .replace(std::time::Instant::now());
+    fn end_benchmark(&mut self) {
+        if let Some(start) = self.start_time {
+            let duration = start.elapsed();
+            self.durations.push(duration);
+            self.start_time = None;
+        }
     }
 
     fn elapsed_ms(&self) -> Option<f64> {
-        let start = self.start_time.borrow();
-        let end = self.end_time.borrow();
-        if let (Some(s), Some(e)) = (*start, *end) {
-            let duration = e.duration_since(s);
-            Some(duration.as_secs_f64() * 1000.0)
-        } else {
+        if self.durations.is_empty() {
             None
+        } else {
+            let total_duration: std::time::Duration = self.durations.iter().copied().sum();
+            let avg_duration = total_duration / (self.durations.len() as u32);
+            Some(avg_duration.as_secs_f64() * 1000.0)
         }
+    }
+
+    fn n(&self) -> usize {
+        self.durations.len()
     }
 }

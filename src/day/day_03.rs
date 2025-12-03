@@ -1,4 +1,5 @@
 use crate::day::{Day, Solution};
+use rayon::prelude::*;
 
 struct Day03;
 
@@ -40,6 +41,7 @@ impl Solution for Day03 {
     fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
             .lines()
+            .par_bridge()
             .map(|bank| {
                 let batteries: Vec<u32> = bank.chars().map(|c| c.to_digit(10).unwrap()).collect();
                 for left_digit in (0..=9).rev() {
@@ -69,6 +71,7 @@ impl Solution for Day03 {
     fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
             .lines()
+            .par_bridge()
             .map(|bank| {
                 let batteries: Vec<u32> = bank.chars().map(|c| c.to_digit(10).unwrap()).collect();
                 let mut coverage = vec![];

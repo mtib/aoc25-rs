@@ -40,22 +40,34 @@ impl Part {
     }
 }
 
-static CURRENT_MODE: std::sync::Mutex<Option<PuzzleInputType>> = std::sync::Mutex::new(None);
-pub fn set_current_mode(mode: PuzzleInputType) {
-    let mut guard = CURRENT_MODE.lock().unwrap();
+static CURRENT_INPUT: std::sync::Mutex<Option<PuzzleInputType>> = std::sync::Mutex::new(None);
+pub fn set_input_mode(mode: PuzzleInputType) {
+    let mut guard = CURRENT_INPUT.lock().unwrap();
     *guard = Some(mode);
 }
 
 #[allow(unused)]
-pub fn get_current_mode() -> PuzzleInputType {
-    let guard = CURRENT_MODE.lock().unwrap();
+pub fn get_input_mode() -> PuzzleInputType {
+    let guard = CURRENT_INPUT.lock().unwrap();
     guard.unwrap()
+}
+
+static IS_BENCHMARKING: std::sync::Mutex<bool> = std::sync::Mutex::new(false);
+pub fn set_benchmarking(is_benchmarking: bool) {
+    let mut guard = IS_BENCHMARKING.lock().unwrap();
+    *guard = is_benchmarking;
+}
+
+#[allow(unused)]
+pub fn is_benchmarking() -> bool {
+    let guard = IS_BENCHMARKING.lock().unwrap();
+    *guard
 }
 
 #[macro_export]
 macro_rules! example_println {
     ($($arg:tt)*) => {
-        if $crate::day::get_current_mode() == $crate::util::input::PuzzleInputType::Example {
+        if (!$crate::day::is_benchmarking() && $crate::day::get_current_mode() == $crate::util::input::PuzzleInputType::Example) {
             println!($($arg)*);
         }
     };
@@ -64,7 +76,7 @@ macro_rules! example_println {
 #[macro_export]
 macro_rules! actual_println {
     ($($arg:tt)*) => {
-        if $crate::day::get_current_mode() == $crate::util::input::PuzzleInputType::Actual {
+        if (!$crate::day::is_benchmarking() &&$crate::day::get_current_mode() == $crate::util::input::PuzzleInputType::Actual) {
             println!($($arg)*);
         }
     };
@@ -94,7 +106,7 @@ impl dyn Day {
         &self,
         part: Part,
         puzzle_getter: &dyn PuzzleGetter,
-        benchmarker: &dyn Benchmarker,
+        benchmarker: &mut dyn Benchmarker,
     ) -> Result<i64, Box<dyn Error>> {
         let input = puzzle_getter.get_input()?;
         benchmarker.start_benchmark();

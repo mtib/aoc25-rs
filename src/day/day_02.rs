@@ -1,4 +1,5 @@
 use crate::day::{Day, Solution};
+use rayon::prelude::*;
 
 struct Day02;
 
@@ -52,14 +53,16 @@ impl Solution for Day02 {
         let sum = input
             .trim()
             .split(',')
+            .par_bridge()
             .map(|range| {
                 let parsed_range = range
                     .split('-')
                     .map(|r| r.parse().unwrap())
                     .collect::<Vec<i64>>();
                 self.simple_invalid_ids(parsed_range[0], parsed_range[1])
+                    .iter()
+                    .sum::<i64>()
             })
-            .flatten()
             .sum();
         Ok(sum)
     }
@@ -68,14 +71,16 @@ impl Solution for Day02 {
         let sum = input
             .trim()
             .split(',')
+            .par_bridge()
             .map(|range| {
                 let parsed_range = range
                     .split('-')
                     .map(|r| r.parse().unwrap())
                     .collect::<Vec<i64>>();
                 self.repeated_invalid_ids(parsed_range[0], parsed_range[1])
+                    .iter()
+                    .sum::<i64>()
             })
-            .flatten()
             .sum();
         Ok(sum)
     }

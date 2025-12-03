@@ -13,7 +13,9 @@ mod util;
 
 fn main() {
     dotenv::dotenv().ok();
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let flags = take_flags(&mut args);
+    let args = args;
     let all_days = day::get_days();
     let run_targets = {
         let arg_targets = determine_run_targets(&args);
@@ -42,11 +44,17 @@ fn main() {
             PuzzleInputType::Example => day.as_ref(),
             PuzzleInputType::Actual => &cookie_getter,
         };
-        let benchmarker = SimpleBenchmarker::new();
+        let mut benchmarker = SimpleBenchmarker::new();
 
-        day::set_current_mode(run.input_type);
-        let result = day.run(run.part, getter, &benchmarker);
-        print_result(&run, result, &benchmarker);
+        day::set_input_mode(run.input_type);
+        let start = std::time::Instant::now();
+        let result = day.run(run.part, getter, &mut benchmarker);
+        while start.elapsed().as_millis() < 1000 {
+            day::set_benchmarking(true);
+            let _ = day.run(run.part, getter, &mut benchmarker);
+            day::set_benchmarking(false);
+        }
+        print_result(&run, result, &benchmarker, &flags);
     }
 }
 
@@ -118,6 +126,7 @@ fn print_result(
     run: &RunTarget,
     result: Result<i64, Box<dyn std::error::Error>>,
     benchmarker: &dyn Benchmarker,
+    flags: &Vec<String>,
 ) {
     let identifier = format!(
         "\x1b[37m[{:2}.{}{}]\x1b[0m",
@@ -131,10 +140,15 @@ fn print_result(
     match result {
         Ok(value) => {
             println!(
-                "{} \x1b[33;1m{}\x1b[0;37m in {:.3}ms\x1b[0m",
+                "{} \x1b[33;1m{}\x1b[0;37m in {:.3}ms (n={})\x1b[0m",
                 identifier,
-                value,
-                benchmarker.elapsed_ms().unwrap()
+                if has_flag(flags, &["-b", "--benchmark"]) {
+                    "<hidden>".to_owned()
+                } else {
+                    value.to_string()
+                },
+                benchmarker.elapsed_ms().unwrap(),
+                benchmarker.n()
             );
         }
         Err(e) => {
@@ -155,4 +169,18 @@ fn print_result(
             );
         }
     }
+}
+
+fn take_flags(args: &mut Vec<String>) -> Vec<String> {
+    let flags = args
+        .iter()
+        .filter(|arg| arg.starts_with("-"))
+        .cloned()
+        .collect();
+    args.retain(|arg| !arg.starts_with("-"));
+    flags
+}
+
+fn has_flag(flags: &[String], variants: &[&str]) -> bool {
+    flags.iter().any(|f| variants.contains(&f.as_str()))
 }
