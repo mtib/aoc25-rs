@@ -6,9 +6,10 @@ use std::{
 };
 
 mod day_01;
+mod day_02;
 
 pub fn get_days() -> Vec<Box<dyn Day>> {
-    vec![day_01::day()]
+    vec![day_01::day(), day_02::day()]
 }
 
 #[derive(Debug, Clone, Copy)]
