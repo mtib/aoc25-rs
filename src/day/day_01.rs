@@ -1,23 +1,17 @@
-use crate::days::{Benchmarker, ExampleGetter, NumberedDay, PuzzleDayRunner, PuzzleGetter};
+use std::error::Error;
+
+use crate::day::Solution;
 
 use super::Day;
 
 struct Day01;
 
-impl NumberedDay for Day01 {
+impl Solution for Day01 {
     fn number(&self) -> u8 {
         1
     }
-}
 
-impl PuzzleDayRunner for Day01 {
-    fn run_part1(
-        &self,
-        puzzle_getter: &dyn PuzzleGetter,
-        benchmarker: &dyn Benchmarker,
-    ) -> Result<i64, Box<dyn std::error::Error>> {
-        let input = puzzle_getter.get_input()?;
-        benchmarker.start_benchmark();
+    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn Error>> {
         let mut position = 50;
         let mut zero_hit = 0;
         for line in input.lines().collect::<Vec<_>>() {
@@ -34,17 +28,10 @@ impl PuzzleDayRunner for Day01 {
                 zero_hit += 1;
             }
         }
-        benchmarker.end_benchmark();
         Ok(zero_hit)
     }
 
-    fn run_part2(
-        &self,
-        puzzle_getter: &dyn PuzzleGetter,
-        benchmarker: &dyn Benchmarker,
-    ) -> Result<i64, Box<dyn std::error::Error>> {
-        let input = puzzle_getter.get_input()?;
-        benchmarker.start_benchmark();
+    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
         let mut position = 50;
         let mut zero_pass = 0;
         for line in input.lines().collect::<Vec<_>>() {
@@ -79,14 +66,11 @@ impl PuzzleDayRunner for Day01 {
                 ((pos % 100) + 100) % 100
             };
         }
-        benchmarker.end_benchmark();
         Ok(zero_pass.into())
     }
-}
-
-impl ExampleGetter for Day01 {
-    fn get_example(&self) -> String {
-        r#"L68
+    fn get_example(&self) -> Option<&str> {
+        Some(
+            r#"L68
 L30
 R48
 L5
@@ -96,8 +80,8 @@ L1
 L99
 R14
 L82
-"#
-        .to_string()
+"#,
+        )
     }
 }
 
