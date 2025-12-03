@@ -18,14 +18,22 @@ fn main() {
     let args = args;
     let all_days = day::get_days();
     let run_targets = {
-        let arg_targets = determine_run_targets(&args);
-        if arg_targets.is_empty() {
-            all_days
-                .last()
-                .map(|d| d.as_run_targets())
-                .unwrap_or_default()
+        if has_flag(&flags, &["-a", "--all"]) {
+            let mut targets = Vec::new();
+            for day in &all_days {
+                targets.extend(day.as_run_targets());
+            }
+            targets
         } else {
-            arg_targets
+            let arg_targets = determine_run_targets(&args);
+            if arg_targets.is_empty() {
+                all_days
+                    .last()
+                    .map(|d| d.as_run_targets())
+                    .unwrap_or_default()
+            } else {
+                arg_targets
+            }
         }
     };
 
@@ -49,7 +57,7 @@ fn main() {
         day::set_input_mode(run.input_type);
         let start = std::time::Instant::now();
         let result = day.run(run.part, getter, &mut benchmarker);
-        while start.elapsed().as_millis() < 1000 {
+        while start.elapsed().as_millis() < 500 && benchmarker.n() < 100 && result.is_ok() {
             day::set_benchmarking(true);
             let _ = day.run(run.part, getter, &mut benchmarker);
             day::set_benchmarking(false);
