@@ -23,6 +23,11 @@ cargo run 3a       # Day 3, actual input only
 # Combine options
 cargo run 3.1e     # Day 3, part 1, example input
 cargo run 3.2a     # Day 3, part 2, actual input
+
+# Run all days
+cargo run e        # All days, example input only
+cargo run a        # All days, actual input only
+cargo run e a      # All days, both example and actual input
 ```
 
 ## Setup

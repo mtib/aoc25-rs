@@ -18,22 +18,14 @@ fn main() {
     let args = args;
     let all_days = day::get_days();
     let run_targets = {
-        if has_flag(&flags, &["-a", "--all"]) {
-            let mut targets = Vec::new();
-            for day in &all_days {
-                targets.extend(day.as_run_targets());
-            }
-            targets
+        let arg_targets = determine_run_targets(&args, &all_days);
+        if arg_targets.is_empty() {
+            all_days
+                .last()
+                .map(|d| d.as_run_targets())
+                .unwrap_or_default()
         } else {
-            let arg_targets = determine_run_targets(&args);
-            if arg_targets.is_empty() {
-                all_days
-                    .last()
-                    .map(|d| d.as_run_targets())
-                    .unwrap_or_default()
-            } else {
-                arg_targets
-            }
+            arg_targets
         }
     };
 
@@ -88,10 +80,30 @@ impl dyn Day {
     }
 }
 
-fn determine_run_targets(args: &[String]) -> Vec<RunTarget> {
+fn determine_run_targets(args: &[String], available_days: &[Box<dyn Day>]) -> Vec<RunTarget> {
     let mut targets = Vec::new();
     let regex = regex::Regex::new(r"(\d)+(\.\d)?([ae])?").unwrap();
     for arg in args {
+        if arg == "a" {
+            for day in available_days {
+                targets.extend({
+                    let mut all = day.as_run_targets();
+                    all.retain(|t| t.input_type == PuzzleInputType::Actual);
+                    all
+                });
+            }
+            continue;
+        }
+        if arg == "e" {
+            for day in available_days {
+                targets.extend({
+                    let mut all = day.as_run_targets();
+                    all.retain(|t| t.input_type == PuzzleInputType::Example);
+                    all
+                });
+            }
+            continue;
+        }
         let result = if let Some(m) = regex.captures(&arg) {
             m
         } else {
