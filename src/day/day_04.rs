@@ -1,34 +1,86 @@
-use std::sync::Mutex;
-
-use crate::{
-    day::{Day, Solution},
-    example_println,
-};
+use crate::day::{Day, Solution};
 use rayon::prelude::*;
 
 struct Day04;
 
+struct Map {
+    lines: Box<[Box<[CellState]>]>,
+    width: usize,
+    height: usize,
+    mask: Vec<Vec<bool>>,
+}
+
+impl Map {
+    fn from_input<'a>(input: &str) -> Map {
+        let lines = input.lines().collect::<Box<[&str]>>();
+        let height = lines.len();
+        let width = lines[0].len();
+        let lines = lines
+            .iter()
+            .map(|line| {
+                let cells: Box<[CellState]> = line
+                    .chars()
+                    .map(|c| {
+                        if c == '@' {
+                            CellState::Filled
+                        } else {
+                            CellState::Empty
+                        }
+                    })
+                    .collect::<Box<[CellState]>>();
+                cells
+            })
+            .collect::<Box<[Box<[CellState]>]>>();
+
+        Map {
+            lines,
+            width,
+            height,
+            mask: vec![vec![false; width]; height],
+        }
+    }
+}
+
+static DIRECTIONS: &[(isize, isize)] = &[
+    (-1, -1),
+    (0, -1),
+    (1, -1),
+    (1, 0),
+    (1, 1),
+    (0, 1),
+    (-1, 1),
+    (-1, 0),
+];
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum CellState {
+    Empty,
+    Filled,
+}
+
 impl Day04 {
-    fn count_adjacent(&self, lines: &[&str], width: usize, x: usize, y: usize) -> u8 {
+    fn is_blocked(&self, map: &Map, x: usize, y: usize) -> bool {
+        let bx = x as isize;
+        let by = y as isize;
         let mut count = 0;
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                if dx == 0 && dy == 0 {
-                    continue;
-                }
-                let nx = x as isize + dx;
-                let ny = y as isize + dy;
-                if nx >= 0
-                    && ny >= 0
-                    && (nx as usize) < width
-                    && (ny as usize) < lines.len()
-                    && lines[ny as usize].chars().nth(nx as usize).unwrap() == '@'
-                {
-                    count += 1;
-                }
+        for (dx, dy) in DIRECTIONS {
+            let nx = bx + dx;
+            let ny = by + dy;
+            if nx >= 0
+                && ny >= 0
+                && (nx as usize) < map.width
+                && (ny as usize) < map.height
+                && map.lines[ny as usize][nx as usize] == CellState::Filled
+                && !map.mask[ny as usize][nx as usize]
+            {
+                count += 1;
+            }
+
+            if count >= 4 {
+                return true;
             }
         }
-        count
+        return false;
     }
 }
 
@@ -37,18 +89,17 @@ impl Solution for Day04 {
         4
     }
     fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
-        let lines: Box<[&str]> = input.lines().collect();
-        let width = lines[0].len();
+        let map = Map::from_input(input);
 
-        let count = lines
+        let count = map
+            .lines
             .par_iter()
             .enumerate()
-            .map(|(y, &line)| {
-                line.chars()
+            .map(|(y, line)| {
+                line.iter()
                     .enumerate()
-                    .filter(|&(_, c)| c == '@')
-                    .map(|(x, _)| self.count_adjacent(&lines, width, x, y))
-                    .filter(|&count| count < 4)
+                    .filter(|&(_, &c)| c == CellState::Filled)
+                    .filter(|(x, _)| !self.is_blocked(&map, *x, y))
                     .count() as i64
             })
             .sum::<i64>();
@@ -56,50 +107,31 @@ impl Solution for Day04 {
         Ok(count)
     }
     fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
-        let lines: Mutex<Vec<String>> = Mutex::new(input.lines().map(|s| s.to_string()).collect());
-        let width = lines.lock().unwrap()[0].len();
-
-        let count = Mutex::new(0);
-
+        let mut map = Map::from_input(input);
+        let mut total = 0;
         loop {
-            let pre_count = count.lock().unwrap().clone();
-            let current_map_string: Box<[String]> = {
-                let lines = lines.lock().unwrap();
-                lines.iter().cloned().collect()
-            };
-            let current_map: Box<[&str]> = current_map_string.iter().map(|s| s.as_str()).collect();
-            for line in current_map.iter() {
-                example_println!("{}", line);
-            }
-            example_println!("current count = {}\n", count.lock().unwrap());
-            current_map
+            let moved = map
+                .lines
                 .par_iter()
                 .enumerate()
-                .flat_map(|(y, line)| {
-                    line.chars()
+                .flat_map_iter(|(y, line)| {
+                    let map = &map;
+                    line.iter()
                         .enumerate()
-                        .filter(|&(_, c)| c == '@')
-                        .filter(|(x, _)| self.count_adjacent(&current_map, width, *x, y) < 4)
-                        .map(|(x, _)| (x, y))
-                        .collect::<Vec<(usize, usize)>>()
+                        .filter(move |(x, c)| **c == CellState::Filled && !map.mask[y][*x])
+                        .filter(move |(x, _)| !self.is_blocked(&map, *x, y))
+                        .map(move |(x, _)| (x, y))
                 })
-                .for_each(|(x, y)| {
-                    {
-                        let mut count = count.lock().unwrap();
-                        *count += 1;
-                    }
-                    let mut lines = lines.lock().unwrap();
-                    let line = &mut lines[y];
-                    let mut chars: Vec<char> = line.chars().collect();
-                    chars[x] = '.';
-                    *line = chars.into_iter().collect();
-                });
+                .collect::<Box<_>>();
 
-            if *count.lock().unwrap() == pre_count {
-                break;
+            if moved.len() == 0 {
+                return Ok(total);
+            }
+            total += moved.len() as i64;
+            for (x, y) in moved {
+                map.mask[y][x] = true;
             }
         }
-        Ok(count.lock().unwrap().clone())
     }
     fn get_example(&self) -> Option<&str> {
         Some(
