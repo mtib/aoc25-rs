@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     error::Error,
     fmt::Display,
     hash::{self, Hash, Hasher},
@@ -25,10 +26,15 @@ pub trait PuzzleGetter {
     fn get_type(&self) -> PuzzleInputType;
 }
 
-struct CookiePuzzleInputGetter;
+struct CookiePuzzleInputGetter {
+    cache: RefCell<Option<String>>,
+}
 
 impl CookiePuzzleInputGetter {
-    fn get_input(year: u16, day: u8) -> Result<String, Box<dyn Error>> {
+    fn get_input(&self, year: u16, day: u8) -> Result<String, Box<dyn Error>> {
+        if let Some(cached) = &*self.cache.borrow() {
+            return Ok(cached.clone());
+        }
         let session_cookie =
             std::env::var("AOC_COOKIE").expect("AOC_COOKIE environment variable not set");
 
@@ -38,6 +44,8 @@ impl CookiePuzzleInputGetter {
             hasher.finish()
         });
         if let Ok(cached) = std::fs::read_to_string(&cache_path) {
+            let mut cache = self.cache.borrow_mut();
+            cache.replace(cached.clone());
             return Ok(cached);
         }
 
@@ -62,22 +70,33 @@ impl CookiePuzzleInputGetter {
         std::fs::write(&cache_path, &input)?;
         Ok(input)
     }
+
+    fn new() -> Self {
+        Self {
+            cache: RefCell::new(None),
+        }
+    }
 }
 
 pub struct DayCookiePuzzleInputGetter {
     year: u16,
     day: u8,
+    inner: CookiePuzzleInputGetter,
 }
 
 impl DayCookiePuzzleInputGetter {
     pub fn new(year: u16, day: u8) -> Self {
-        Self { year, day }
+        Self {
+            year,
+            day,
+            inner: CookiePuzzleInputGetter::new(),
+        }
     }
 }
 
 impl PuzzleGetter for DayCookiePuzzleInputGetter {
     fn get_input(&self) -> Result<String, Box<dyn Error>> {
-        CookiePuzzleInputGetter::get_input(self.year, self.day)
+        self.inner.get_input(self.year, self.day)
     }
 
     fn get_type(&self) -> PuzzleInputType {
