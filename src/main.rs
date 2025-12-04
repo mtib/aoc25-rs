@@ -11,6 +11,8 @@ mod day;
 mod error;
 mod util;
 
+static BENCHMARK_FLAGS: &[&str] = &["-b", "--benchmark"];
+
 fn main() {
     dotenv::dotenv().ok();
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -47,6 +49,11 @@ fn main() {
         let mut benchmarker = SimpleBenchmarker::new();
 
         day::set_input_mode(run.input_type);
+        if has_flag(&flags, BENCHMARK_FLAGS) {
+            day::set_benchmarking(true);
+        } else {
+            day::set_benchmarking(false);
+        }
         let start = std::time::Instant::now();
         let result = day.run(run.part, getter, &mut benchmarker);
         while start.elapsed().as_millis() < 500 && benchmarker.n() < 100 && result.is_ok() {
@@ -162,7 +169,7 @@ fn print_result(
             println!(
                 "{} \x1b[33;1m{}\x1b[0;37m in {:.3}ms (n={})\x1b[0m",
                 identifier,
-                if has_flag(flags, &["-b", "--benchmark"]) {
+                if has_flag(flags, BENCHMARK_FLAGS) {
                     "<hidden>".to_owned()
                 } else {
                     value.to_string()
