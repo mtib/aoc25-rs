@@ -4,44 +4,48 @@ use rayon::prelude::*;
 struct Day02;
 
 impl Day02 {
-    fn simple_invalid_ids(&self, from: i64, to: i64) -> Vec<i64> {
-        let mut invalid_ids = Vec::new();
+    fn sum_invalid_ids(&self, from: i64, to: i64) -> i64 {
+        let mut invalid_id_sum = 0;
         for id in from..=to {
-            let id_str = id.to_string();
-            if id_str.len() % 2 != 0 {
+            let decimal_len = ((id as f64).log10().floor() as u32) + 1;
+            if decimal_len % 2 != 0 {
                 continue;
             }
-            let (front, back) = id_str.split_at(id_str.len() / 2);
+            let power = 10_i64.pow(decimal_len / 2);
+            let front = id / power;
+            let back = id % power;
             if front == back {
-                invalid_ids.push(id);
+                invalid_id_sum += id
             }
         }
-        invalid_ids
+        invalid_id_sum
     }
-    fn repeated_split_check(&self, s: &str, divisor: usize) -> bool {
-        let part1 = &s[0..divisor];
-        for i in 1..(s.len() / divisor) {
-            if &s[i * divisor..(i + 1) * divisor] != part1 {
+    fn repeated_split_check(&self, number: i64, part_len: u32, decimal_len: u32) -> bool {
+        let part1 = number / 10_i64.pow(decimal_len - part_len);
+        for i in 1..(decimal_len / part_len) {
+            let partn =
+                number / 10_i64.pow(decimal_len - (i + 1) * part_len) % 10_i64.pow(part_len);
+            if partn != part1 {
                 return false;
             }
         }
         return true;
     }
-    fn repeated_invalid_ids(&self, from: i64, to: i64) -> Vec<i64> {
-        let mut invalid_ids = Vec::new();
+    fn sum_repeated_invalid_ids(&self, from: i64, to: i64) -> i64 {
+        let mut invalid_id_sum = 0;
         for id in from..=to {
-            let id_str = id.to_string();
-            let divisors: Vec<usize> = (1..=id_str.len() / 2)
-                .filter(|d| id_str.len() % d == 0)
+            let decimal_len = ((id as f64).log10().floor() as u32) + 1;
+            let part_len_options: Vec<u32> = (1..=decimal_len / 2)
+                .filter(|d| decimal_len % d == 0)
                 .collect();
-            for divisor in divisors {
-                if self.repeated_split_check(&id_str, divisor) {
-                    invalid_ids.push(id);
+            for part_len in part_len_options {
+                if self.repeated_split_check(id, part_len, decimal_len) {
+                    invalid_id_sum += id;
                     break;
                 }
             }
         }
-        invalid_ids
+        invalid_id_sum
     }
 }
 
@@ -55,13 +59,10 @@ impl Solution for Day02 {
             .split(',')
             .par_bridge()
             .map(|range| {
-                let parsed_range = range
-                    .split('-')
-                    .map(|r| r.parse().unwrap())
-                    .collect::<Vec<i64>>();
-                self.simple_invalid_ids(parsed_range[0], parsed_range[1])
-                    .iter()
-                    .sum::<i64>()
+                let dash = range.find('-').unwrap();
+                let start: i64 = range[..dash].parse().unwrap();
+                let end: i64 = range[dash + 1..].parse().unwrap();
+                self.sum_invalid_ids(start, end)
             })
             .sum();
         Ok(sum)
@@ -73,13 +74,10 @@ impl Solution for Day02 {
             .split(',')
             .par_bridge()
             .map(|range| {
-                let parsed_range = range
-                    .split('-')
-                    .map(|r| r.parse().unwrap())
-                    .collect::<Vec<i64>>();
-                self.repeated_invalid_ids(parsed_range[0], parsed_range[1])
-                    .iter()
-                    .sum::<i64>()
+                let dash = range.find('-').unwrap();
+                let start: i64 = range[..dash].parse().unwrap();
+                let end: i64 = range[dash + 1..].parse().unwrap();
+                self.sum_repeated_invalid_ids(start, end)
             })
             .sum();
         Ok(sum)
