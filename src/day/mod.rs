@@ -61,8 +61,11 @@ pub fn is_benchmarking() -> bool {
 #[macro_export]
 macro_rules! example_println {
     ($($arg:tt)*) => {
-        if (!$crate::day::is_benchmarking() && $crate::day::get_input_mode() == $crate::util::input::PuzzleInputType::Example) {
-            println!($($arg)*);
+        #[cfg(debug_assertions)]
+        {
+            if (!$crate::day::is_benchmarking() && $crate::day::get_input_mode() == $crate::util::input::PuzzleInputType::Example) {
+                println!($($arg)*);
+            }
         }
     };
 }
@@ -70,8 +73,11 @@ macro_rules! example_println {
 #[macro_export]
 macro_rules! actual_println {
     ($($arg:tt)*) => {
-        if (!$crate::day::is_benchmarking() &&$crate::day::get_input_mode() == $crate::util::input::PuzzleInputType::Actual) {
-            println!($($arg)*);
+        #[cfg(debug_assertions)]
+        {
+            if (!$crate::day::is_benchmarking() && $crate::day::get_input_mode() == $crate::util::input::PuzzleInputType::Actual) {
+                println!($($arg)*);
+            }
         }
     };
 }
