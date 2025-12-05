@@ -94,3 +94,24 @@ impl Solution for Day02 {
 pub fn day() -> Box<dyn Day> {
     Box::new(Day02)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_day_02_part_1_example() {
+        let day = day();
+        let example_input = day.get_example().unwrap();
+        let result = day.run_part_1(example_input).unwrap();
+        assert_eq!(result, 1227775554);
+    }
+
+    #[test]
+    fn test_day_02_part_2_example() {
+        let day = day();
+        let example_input = day.get_example().unwrap();
+        let result = day.run_part_2(example_input).unwrap();
+        assert_eq!(result, 4174379265);
+    }
+}
