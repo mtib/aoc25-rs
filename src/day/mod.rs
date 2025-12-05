@@ -8,21 +8,7 @@ use crate::{
     },
 };
 
-mod day_01;
-mod day_02;
-mod day_03;
-mod day_04;
-mod day_05;
-
-pub fn get_days() -> Vec<Box<dyn Day>> {
-    vec![
-        day_01::day(),
-        day_02::day(),
-        day_03::day(),
-        day_04::day(),
-        day_05::day(),
-    ]
-}
+include!(concat!(env!("OUT_DIR"), "/days.rs"));
 
 #[derive(Debug, Clone, Copy)]
 pub enum Part {
