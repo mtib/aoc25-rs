@@ -95,7 +95,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_day_05_part_1_example() {
+    fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
         let result = day.run_part_1(example_input).unwrap();
@@ -103,7 +103,7 @@ mod test {
     }
 
     #[test]
-    fn test_day_05_part_2_example() {
+    fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
         let result = day.run_part_2(example_input).unwrap();
