@@ -1,4 +1,7 @@
-use crate::day::{Day, Solution};
+use crate::{
+    day::{Day, Solution},
+    util::number::parse_u8_slice_to_i64,
+};
 use rayon::prelude::*;
 
 struct Day02;
@@ -53,30 +56,28 @@ impl Solution for Day02 {
     fn number(&self) -> u8 {
         2
     }
-    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
-            .trim()
-            .split(',')
+            .split(|&c| c == b',')
             .par_bridge()
             .map(|range| {
-                let dash = range.find('-').unwrap();
-                let start: i64 = range[..dash].parse().unwrap();
-                let end: i64 = range[dash + 1..].parse().unwrap();
+                let dash = range.iter().position(|&c| c == b'-').unwrap();
+                let start: i64 = parse_u8_slice_to_i64(&range[..dash]);
+                let end: i64 = parse_u8_slice_to_i64(&range[dash + 1..]);
                 self.sum_invalid_ids(start, end)
             })
             .sum();
         Ok(sum)
     }
 
-    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
-            .trim()
-            .split(',')
+            .split(|&c| c == b',')
             .par_bridge()
             .map(|range| {
-                let dash = range.find('-').unwrap();
-                let start: i64 = range[..dash].parse().unwrap();
-                let end: i64 = range[dash + 1..].parse().unwrap();
+                let dash = range.iter().position(|&c| c == b'-').unwrap();
+                let start: i64 = parse_u8_slice_to_i64(&range[..dash]);
+                let end: i64 = parse_u8_slice_to_i64(&range[dash + 1..]);
                 self.sum_repeated_invalid_ids(start, end)
             })
             .sum();
@@ -101,7 +102,7 @@ mod test {
     fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_1(example_input).unwrap();
+        let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, 1227775554);
     }
 
@@ -109,7 +110,7 @@ mod test {
     fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input).unwrap();
+        let result = day.run_part_2(example_input.as_bytes()).unwrap();
         assert_eq!(result, 4174379265);
     }
 }

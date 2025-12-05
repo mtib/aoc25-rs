@@ -26,7 +26,7 @@ mod test {
     fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_1(example_input).unwrap();
+        let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, todo!());
     }
 
@@ -34,7 +34,7 @@ mod test {
     fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input).unwrap();
+        let result = day.run_part_2(example_input.as_bytes()).unwrap();
         assert_eq!(result, todo!());
     }
 }

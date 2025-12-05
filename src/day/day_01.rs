@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::day::Solution;
+use crate::{day::Solution, util::number::parse_u8_slice_to_i64};
 
 use super::Day;
 
@@ -11,17 +11,16 @@ impl Solution for Day01 {
         1
     }
 
-    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn Error>> {
+    fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn Error>> {
         let mut position = 50;
         let mut zero_hit = 0;
-        for line in input.lines().collect::<Vec<_>>() {
-            let mut chars = line.chars();
-            let direction = match chars.next().unwrap() {
-                'L' => -1,
-                'R' => 1,
+        for chars in input.split(|&c| c == b'\n') {
+            let direction = match chars[0] {
+                b'L' => -1,
+                b'R' => 1,
                 _ => return Err("Invalid direction".into()),
             };
-            let steps: i32 = chars.collect::<String>().parse()?;
+            let steps = parse_u8_slice_to_i64(&chars[1..]);
             position += direction * steps;
             position = ((position % 100) + 100) % 100;
             if position == 0 {
@@ -31,17 +30,16 @@ impl Solution for Day01 {
         Ok(zero_hit)
     }
 
-    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let mut position = 50;
         let mut zero_pass = 0;
-        for line in input.lines().collect::<Vec<_>>() {
-            let mut chars = line.chars();
-            let direction = match chars.next().unwrap() {
-                'L' => -1,
-                'R' => 1,
+        for chars in input.split(|&c| c == b'\n') {
+            let direction = match chars[0] {
+                b'L' => -1,
+                b'R' => 1,
                 _ => return Err("Invalid direction".into()),
             };
-            let steps: i32 = chars.collect::<String>().parse()?;
+            let steps = parse_u8_slice_to_i64(&chars[1..]);
             position = {
                 let mut pos = position;
 
@@ -79,8 +77,7 @@ L55
 L1
 L99
 R14
-L82
-"#,
+L82"#,
         )
     }
 }
@@ -97,7 +94,7 @@ mod test {
     fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_1(example_input).unwrap();
+        let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, 3);
     }
 
@@ -105,7 +102,7 @@ mod test {
     fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input).unwrap();
+        let result = day.run_part_2(example_input.as_bytes()).unwrap();
         assert_eq!(result, 6);
     }
 }

@@ -88,11 +88,11 @@ pub trait Solution {
         None
     }
     #[allow(unused_variables)]
-    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn Error>> {
+    fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn Error>> {
         Err(PuzzleNotImplementedError.into())
     }
     #[allow(unused_variables)]
-    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn Error>> {
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn Error>> {
         Err(PuzzleNotImplementedError.into())
     }
 }
@@ -108,11 +108,12 @@ impl dyn Day {
         puzzle_getter: &dyn PuzzleGetter,
         benchmarker: &mut dyn Benchmarker,
     ) -> Result<i64, Box<dyn Error>> {
-        let input = puzzle_getter.get_input()?;
+        let input_string = puzzle_getter.get_input()?;
+        let input_bytes = input_string.as_bytes().trim_ascii();
         benchmarker.start_benchmark();
         let result = match part {
-            Part::One => self.run_part_1(&input),
-            Part::Two => self.run_part_2(&input),
+            Part::One => self.run_part_1(input_bytes),
+            Part::Two => self.run_part_2(input_bytes),
         };
         benchmarker.end_benchmark();
         result

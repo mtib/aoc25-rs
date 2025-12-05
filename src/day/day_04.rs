@@ -11,17 +11,17 @@ struct Map {
 }
 
 impl Map {
-    fn from_input<'a>(input: &str) -> Map {
-        let lines = input.lines().collect::<Box<[&str]>>();
+    fn from_input<'a>(input: &[u8]) -> Map {
+        let lines = input.split(|&c| c == b'\n').collect::<Box<[&[u8]]>>();
         let height = lines.len();
         let width = lines[0].len();
         let lines = lines
             .iter()
             .map(|line| {
                 let cells: Box<[CellState]> = line
-                    .chars()
-                    .map(|c| {
-                        if c == '@' {
+                    .iter()
+                    .map(|&c| {
+                        if c == b'@' {
                             CellState::Filled
                         } else {
                             CellState::Empty
@@ -88,7 +88,7 @@ impl Solution for Day04 {
     fn number(&self) -> u8 {
         4
     }
-    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let map = Map::from_input(input);
 
         let count = map
@@ -106,7 +106,7 @@ impl Solution for Day04 {
 
         Ok(count)
     }
-    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let mut map = Map::from_input(input);
         let mut total = 0;
         loop {
@@ -160,14 +160,14 @@ mod test {
     fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_1(example_input).unwrap();
+        let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, 13);
     }
     #[test]
     fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input).unwrap();
+        let result = day.run_part_2(example_input.as_bytes()).unwrap();
         assert_eq!(result, 43);
     }
 }

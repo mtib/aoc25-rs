@@ -6,7 +6,7 @@ use rayon::prelude::*;
 struct Day03;
 
 impl Day03 {
-    fn cascade(&self, selection: &mut Vec<u32>, new_digit: u32) {
+    fn cascade(&self, selection: &mut Vec<u8>, new_digit: u8) {
         let mut free_digit = new_digit;
         for i in 0..selection.len() {
             if free_digit >= selection[i] {
@@ -24,13 +24,13 @@ impl Solution for Day03 {
     fn number(&self) -> u8 {
         3
     }
-    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
-            .lines()
+            .split(|&c| c == b'\n')
             .par_bridge()
             .map(|bank| {
                 let mut pair = (0, 0);
-                let mut iter = bank.chars().map(|c| c.to_digit(10).unwrap()).rev();
+                let mut iter = bank.iter().map(|c| c - b'0').rev();
                 (&mut iter).take(2).for_each(|d| {
                     pair.1 = pair.0;
                     pair.0 = d;
@@ -43,18 +43,18 @@ impl Solution for Day03 {
                     }
                 });
 
-                pair.0 * 10 + pair.1
+                (pair.0 * 10 + pair.1) as i64
             })
-            .sum::<u32>() as i64;
+            .sum::<i64>();
         Ok(sum)
     }
-    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
-            .lines()
+            .split(|&c| c == b'\n')
             .par_bridge()
             .map(|bank| {
-                let mut iter = bank.chars().map(|c| c.to_digit(10).unwrap()).rev();
-                let mut selection = (&mut iter).take(12).collect::<Vec<u32>>();
+                let mut iter = bank.iter().map(|c| c - b'0').rev();
+                let mut selection = (&mut iter).take(12).collect::<Vec<u8>>();
                 selection.reverse();
                 iter.for_each(|d| self.cascade(&mut selection, d));
                 selection
@@ -87,7 +87,7 @@ mod test {
     fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_1(example_input).unwrap();
+        let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, 357);
     }
 
@@ -95,7 +95,7 @@ mod test {
     fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input).unwrap();
+        let result = day.run_part_2(example_input.as_bytes()).unwrap();
         assert_eq!(result, 3121910778619);
     }
 }

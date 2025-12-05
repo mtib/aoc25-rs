@@ -1,4 +1,7 @@
-use crate::day::{Day, Solution};
+use crate::{
+    day::{Day, Solution},
+    util::number::parse_u8_slice_to_i64,
+};
 use rayon::prelude::*;
 
 struct Day05;
@@ -25,23 +28,23 @@ impl Solution for Day05 {
     fn number(&self) -> u8 {
         5
     }
-    fn run_part_1(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let (ranges, ingredients) = {
             let mut ranges = Vec::new();
             let mut ingredients = Vec::new();
             let mut parsing_ranges = true;
-            for line in input.lines() {
-                if line.trim().is_empty() {
+            for line in input.split(|&c| c == b'\n') {
+                if line.len() == 0 {
                     parsing_ranges = false;
                     continue;
                 }
                 if parsing_ranges {
-                    let parts: Vec<&str> = line.split('-').collect();
-                    let start: i64 = parts[0].parse()?;
-                    let end: i64 = parts[1].parse()?;
+                    let dash_position = line.iter().position(|&c| c == b'-').unwrap();
+                    let start: i64 = parse_u8_slice_to_i64(&line[..dash_position]);
+                    let end: i64 = parse_u8_slice_to_i64(&line[dash_position + 1..]);
                     ranges.push((start, end));
                 } else {
-                    let ingredient: i64 = line.trim().parse()?;
+                    let ingredient: i64 = parse_u8_slice_to_i64(line);
                     ingredients.push(ingredient);
                 }
             }
@@ -53,16 +56,16 @@ impl Solution for Day05 {
             .filter(|&&i| ranges.iter().any(|r| r.0 <= i && i <= r.1))
             .count() as i64)
     }
-    fn run_part_2(&self, input: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let ranges = {
             let mut ranges = Vec::new();
-            for line in input.lines() {
-                if line.trim().is_empty() {
+            for line in input.split(|&c| c == b'\n') {
+                if line.len() == 0 {
                     break;
                 }
-                let parts: Vec<&str> = line.split('-').collect();
-                let start: i64 = parts[0].parse()?;
-                let end: i64 = parts[1].parse()?;
+                let dash_position = line.iter().position(|&c| c == b'-').unwrap();
+                let start: i64 = parse_u8_slice_to_i64(&line[..dash_position]);
+                let end: i64 = parse_u8_slice_to_i64(&line[dash_position + 1..]);
                 ranges.push((start, end));
             }
             self.merge_overlaps(&mut ranges)
@@ -98,7 +101,7 @@ mod test {
     fn part_1_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_1(example_input).unwrap();
+        let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, 3);
     }
 
@@ -106,7 +109,7 @@ mod test {
     fn part_2_example() {
         let day = day();
         let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input).unwrap();
+        let result = day.run_part_2(example_input.as_bytes()).unwrap();
         assert_eq!(result, 14);
     }
 }
