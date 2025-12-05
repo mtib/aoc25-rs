@@ -58,8 +58,8 @@ fn main() {
         let start = std::time::Instant::now();
         let result = day.run(run.part, getter, &mut benchmarker);
         while is_benchmarking
-            && start.elapsed().as_millis() < 500
-            && benchmarker.n() < 100
+            && start.elapsed().as_millis() < 2000
+            && benchmarker.n() < 1000
             && result.is_ok()
         {
             day::set_benchmarking(true);
