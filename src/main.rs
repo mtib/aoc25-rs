@@ -49,14 +49,19 @@ fn main() {
         let mut benchmarker = SimpleBenchmarker::new();
 
         day::set_input_mode(run.input_type);
-        if has_flag(&flags, BENCHMARK_FLAGS) {
+        let is_benchmarking = has_flag(&flags, BENCHMARK_FLAGS);
+        if is_benchmarking {
             day::set_benchmarking(true);
         } else {
             day::set_benchmarking(false);
         }
         let start = std::time::Instant::now();
         let result = day.run(run.part, getter, &mut benchmarker);
-        while start.elapsed().as_millis() < 500 && benchmarker.n() < 100 && result.is_ok() {
+        while is_benchmarking
+            && start.elapsed().as_millis() < 500
+            && benchmarker.n() < 100
+            && result.is_ok()
+        {
             day::set_benchmarking(true);
             let _ = day.run(run.part, getter, &mut benchmarker);
             day::set_benchmarking(false);
@@ -166,17 +171,22 @@ fn print_result(
     );
     match result {
         Ok(value) => {
-            println!(
-                "{} \x1b[33;1m{}\x1b[0;37m in {:.3}ms (n={})\x1b[0m",
-                identifier,
-                if has_flag(flags, BENCHMARK_FLAGS) {
-                    "<hidden>".to_owned()
-                } else {
-                    value.to_string()
-                },
-                benchmarker.elapsed_ms().unwrap(),
-                benchmarker.n()
-            );
+            let mut message = String::new();
+            message.push_str(&identifier);
+            message.push_str(" \x1b[33;1m");
+            message.push_str(&if has_flag(flags, BENCHMARK_FLAGS) {
+                "<hidden>".to_owned()
+            } else {
+                value.to_string()
+            });
+            message.push_str(&format!(
+                "\x1b[0;37m in {:.3}ms",
+                benchmarker.elapsed_ms().unwrap()
+            ));
+            if benchmarker.n() > 1 {
+                message.push_str(&format!(" (n={})", benchmarker.n()));
+            }
+            println!("{}", message);
         }
         Err(e) => {
             match e {
