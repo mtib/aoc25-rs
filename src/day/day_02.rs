@@ -58,6 +58,7 @@ impl Solution for Day02 {
     }
     fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
+            .trim_ascii_end()
             .split(|&c| c == b',')
             .par_bridge()
             .map(|range| {
@@ -72,6 +73,7 @@ impl Solution for Day02 {
 
     fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
         let sum = input
+            .trim_ascii_end()
             .split(|&c| c == b',')
             .par_bridge()
             .map(|range| {

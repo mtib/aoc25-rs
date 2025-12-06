@@ -15,6 +15,9 @@ impl Solution for Day01 {
         let mut position = 50;
         let mut zero_hit = 0;
         for chars in input.split(|&c| c == b'\n') {
+            if chars.is_empty() {
+                continue;
+            }
             let direction = match chars[0] {
                 b'L' => -1,
                 b'R' => 1,
@@ -34,6 +37,9 @@ impl Solution for Day01 {
         let mut position = 50;
         let mut zero_pass = 0;
         for chars in input.split(|&c| c == b'\n') {
+            if chars.is_empty() {
+                continue;
+            }
             let direction = match chars[0] {
                 b'L' => -1,
                 b'R' => 1,

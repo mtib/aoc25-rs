@@ -89,7 +89,7 @@ impl Solution for Day04 {
         4
     }
     fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
-        let map = Map::from_input(input);
+        let map = Map::from_input(input.trim_ascii_end());
 
         let count = map
             .lines
@@ -107,7 +107,7 @@ impl Solution for Day04 {
         Ok(count)
     }
     fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
-        let mut map = Map::from_input(input);
+        let mut map = Map::from_input(input.trim_ascii_end());
         let mut total = 0;
         loop {
             let moved = map

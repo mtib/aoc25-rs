@@ -109,11 +109,11 @@ impl dyn Day {
         benchmarker: &mut dyn Benchmarker,
     ) -> Result<i64, Box<dyn Error>> {
         let input_string = puzzle_getter.get_input()?;
-        let input_bytes = input_string.as_bytes().trim_ascii();
+        let input = input_string.as_bytes();
         benchmarker.start_benchmark();
         let result = match part {
-            Part::One => self.run_part_1(input_bytes),
-            Part::Two => self.run_part_2(input_bytes),
+            Part::One => self.run_part_1(input),
+            Part::Two => self.run_part_2(input),
         };
         benchmarker.end_benchmark();
         result
