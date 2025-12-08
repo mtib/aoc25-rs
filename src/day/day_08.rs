@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     day::{Solution, get_input_mode},
-    example_println,
     util::{input::PuzzleInputType, number::parse_u8_slice_to_i64},
 };
 
@@ -316,10 +315,13 @@ pub fn day() -> Box<dyn Day> {
 
 #[cfg(test)]
 mod test {
+    use crate::day::set_input_mode;
+
     use super::*;
 
     #[test]
     fn part_1_example() {
+        set_input_mode(PuzzleInputType::Example);
         let day = day();
         let example_input = day.get_example().unwrap();
         let result = day.run_part_1(example_input.as_bytes()).unwrap();
@@ -331,6 +333,6 @@ mod test {
         let day = day();
         let example_input = day.get_example().unwrap();
         let result = day.run_part_2(example_input.as_bytes()).unwrap();
-        assert_eq!(result, todo!());
+        assert_eq!(result, 25272);
     }
 }
