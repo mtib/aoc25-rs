@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use crate::{day::Solution, example_println, util::number::parse_u8_slice_to_i64};
+use crate::{
+    day::{Solution, get_input_mode},
+    example_println,
+    util::{input::PuzzleInputType, number::parse_u8_slice_to_i64},
+};
 
 use super::Day;
 
@@ -56,7 +60,14 @@ impl Day08 {
         low
     }
 
-    fn find_closest(&self, a: &Point, px: &[Point], py: &[Point], pz: &[Point]) -> Point {
+    fn find_closest(
+        &self,
+        a: &Point,
+        px: &[Point],
+        py: &[Point],
+        pz: &[Point],
+        min_dist: i64,
+    ) -> Point {
         let mut closest = None;
         let mut min_distance = i64::MAX;
 
@@ -79,7 +90,7 @@ impl Day08 {
                 }
                 let distance = a.dist(neighbor);
 
-                if distance < min_distance && distance != 0 {
+                if distance < min_distance && distance > min_dist {
                     min_distance = distance;
                     closest = Some(neighbor.clone());
                 }
@@ -96,6 +107,8 @@ impl Solution for Day08 {
     }
 
     fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
+        let is_example = get_input_mode() == PuzzleInputType::Example;
+
         let input: Vec<Point> = input
             .trim_ascii()
             .split(|&c| c == b'\n')
@@ -123,39 +136,59 @@ impl Solution for Day08 {
             (px, py, pz)
         };
 
-        let start = input
-            .iter()
-            .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz)))
-            .unwrap();
-
         let mut component: HashMap<Point, usize> = HashMap::new();
+        let mut min_dist = 0;
 
-        component.insert(start.clone(), 0);
-        component.insert(self.find_closest(start, &px, &py, &pz), 0);
-
-        example_println!("start {:?}", component);
-
-        while component.len() < input.len() {
-            // not in component
-            let next_point = input
+        for i in 0..(if is_example { 10 } else { 1000 }) {
+            let point_a = input
                 .iter()
-                .filter(|&p| !component.contains_key(p))
-                .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz)))
+                .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz, min_dist)))
                 .unwrap();
+            let point_b = self.find_closest(point_a, &px, &py, &pz, min_dist);
+            min_dist = point_a.dist(&point_b);
 
-            // maybe in component
-            let closest = self.find_closest(next_point, &px, &py, &pz);
+            let component_id_a = component.get(&point_a);
+            let component_id_b = component.get(&point_b);
 
-            example_println!("next pair {:?} and {:?}", next_point, closest);
+            example_println!(
+                "Step {:>2}: Connecting {:?} #{} and {:?} #{} with distance {:.2}",
+                i + 1,
+                point_a,
+                component_id_a
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| "?".to_string()),
+                point_b,
+                component_id_b
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| "?".to_string()),
+                (min_dist as f64).sqrt()
+            );
 
-            let component_id = component.get(&closest);
+            match (component_id_a, component_id_b) {
+                (Some(&id_a), Some(&id_b)) => {
+                    if id_a == id_b {
+                        continue;
+                    }
+                    let new_id = id_a.min(id_b);
+                    let old_id = id_a.max(id_b);
 
-            if let Some(&id) = component_id {
-                component.insert(next_point.clone(), id);
-            } else {
-                let new_id = component.values().max().unwrap() + 1;
-                component.insert(next_point.clone(), new_id);
-                component.insert(closest, new_id);
+                    for (_point, comp_id) in component.iter_mut() {
+                        if *comp_id == old_id {
+                            *comp_id = new_id;
+                        }
+                    }
+                }
+                (Some(&id), None) => {
+                    component.insert(point_b, id);
+                }
+                (None, Some(&id)) => {
+                    component.insert(point_a.clone(), id);
+                }
+                (None, None) => {
+                    let new_id = component.values().max().unwrap_or(&0) + 1;
+                    component.insert(point_a.clone(), new_id);
+                    component.insert(point_b, new_id);
+                }
             }
         }
 
@@ -174,6 +207,7 @@ impl Solution for Day08 {
 
         example_println!("component_sizes {:?}", component_sizes);
 
+        // 286209 too high
         Ok(component_sizes
             .into_iter()
             .rev()
