@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     day::{Solution, get_input_mode},
@@ -204,6 +204,84 @@ impl Solution for Day08 {
             .take(3)
             .reduce(|acc, next| acc * next)
             .unwrap())
+    }
+
+    fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
+        let input: Vec<Point> = input
+            .trim_ascii()
+            .split(|&c| c == b'\n')
+            .map(|line| {
+                let mut coords = line
+                    .split(|&c| c == b',')
+                    .map(|num| parse_u8_slice_to_i64(num));
+                Point {
+                    x: coords.next().unwrap(),
+                    y: coords.next().unwrap(),
+                    z: coords.next().unwrap(),
+                }
+            })
+            .collect();
+
+        let (px, py, pz) = {
+            let mut px = input.to_vec();
+            let mut py = input.to_vec();
+            let mut pz = input.to_vec();
+
+            px.sort_by_key(|p| p.x);
+            py.sort_by_key(|p| p.y);
+            pz.sort_by_key(|p| p.z);
+
+            (px, py, pz)
+        };
+
+        let mut component: HashMap<Point, usize> = HashMap::new();
+        let mut min_dist = 0;
+
+        let mut last_added_connection = None;
+
+        while component.values().collect::<HashSet<_>>().len() != 1 || component.len() < input.len()
+        {
+            let point_a = input
+                .iter()
+                .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz, min_dist)))
+                .unwrap();
+            let point_b = self.find_closest(point_a, &px, &py, &pz, min_dist);
+            min_dist = point_a.dist(&point_b);
+
+            let component_id_a = component.get(&point_a);
+            let component_id_b = component.get(&point_b);
+
+            last_added_connection = Some((point_a.clone(), point_b.clone()));
+
+            match (component_id_a, component_id_b) {
+                (Some(&id_a), Some(&id_b)) => {
+                    if id_a == id_b {
+                        continue;
+                    }
+                    let new_id = id_a.min(id_b);
+                    let old_id = id_a.max(id_b);
+
+                    for (_point, comp_id) in component.iter_mut() {
+                        if *comp_id == old_id {
+                            *comp_id = new_id;
+                        }
+                    }
+                }
+                (Some(&id), None) => {
+                    component.insert(point_b, id);
+                }
+                (None, Some(&id)) => {
+                    component.insert(point_a.clone(), id);
+                }
+                (None, None) => {
+                    let new_id = component.values().max().unwrap_or(&0) + 1;
+                    component.insert(point_a.clone(), new_id);
+                    component.insert(point_b, new_id);
+                }
+            }
+        }
+
+        Ok(last_added_connection.map(|(a, b)| a.x * b.x).unwrap())
     }
 
     fn get_example(&self) -> Option<&str> {
