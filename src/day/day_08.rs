@@ -16,6 +16,24 @@ struct Point {
     z: i64,
 }
 
+impl PartialOrd for Point {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Point {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.x.cmp(&other.x) {
+            std::cmp::Ordering::Equal => match self.y.cmp(&other.y) {
+                std::cmp::Ordering::Equal => self.z.cmp(&other.z),
+                other => other,
+            },
+            other => other,
+        }
+    }
+}
+
 impl Point {
     fn dist(&self, other: &Point) -> i64 {
         (self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)
@@ -28,88 +46,26 @@ impl std::fmt::Debug for Point {
     }
 }
 
-impl Day08 {
-    fn binary_search(&self, target: &Point, points: &[Point], axis: char) -> usize {
-        let mut low = 0;
-        let mut high = points.len();
+struct Connection {
+    point_a: Point,
+    point_b: Point,
+}
 
-        while low < high {
-            let mid = (low + high) / 2;
-            let value = match axis {
-                'x' => points[mid].x,
-                'y' => points[mid].y,
-                'z' => points[mid].z,
-                _ => panic!("Invalid axis"),
-            };
-
-            if value
-                < match axis {
-                    'x' => target.x,
-                    'y' => target.y,
-                    'z' => target.z,
-                    _ => panic!("Invalid axis"),
-                }
-            {
-                low = mid + 1;
-            } else {
-                high = mid;
-            }
-        }
-
-        low
+impl Connection {
+    fn dist(&self) -> i64 {
+        self.point_a.dist(&self.point_b)
     }
 
-    fn find_closest(
-        &self,
-        a: &Point,
-        px: &[Point],
-        py: &[Point],
-        pz: &[Point],
-        min_dist: i64,
-    ) -> Point {
-        let mut closest = None;
-        let mut min_distance = i64::MAX;
-
-        for axis in ['x', 'y', 'z'] {
-            let points = match axis {
-                'x' => px,
-                'y' => py,
-                'z' => pz,
-                _ => unreachable!(),
-            };
-
-            let approximate_index = self.binary_search(a, points, axis);
-            let mut to_consider = (points.len() / 10).max(6) as i64;
-            let mut di: i64 = 0;
-
-            while to_consider > 0 {
-                for m in [di, -di] {
-                    let neighbor_index = (approximate_index as i64) + m;
-                    if neighbor_index < 0 || neighbor_index >= points.len() as i64 {
-                        to_consider -= 1;
-                        continue;
-                    }
-                    let neighbor = &points[neighbor_index as usize];
-                    if neighbor == a {
-                        continue;
-                    }
-                    let distance = a.dist(neighbor);
-                    if distance <= min_dist {
-                        continue;
-                    }
-                    to_consider -= 1;
-                    if distance < min_distance {
-                        min_distance = distance;
-                        closest = Some(neighbor.clone());
-                    }
-                }
-                di += 1;
-            }
+    fn new(point_a: &Point, point_b: &Point) -> Self {
+        debug_assert!(point_a <= point_b);
+        Connection {
+            point_a: point_a.clone(),
+            point_b: point_b.clone(),
         }
-
-        closest.unwrap()
     }
 }
+
+impl Day08 {}
 
 impl Solution for Day08 {
     fn number(&self) -> u8 {
@@ -134,31 +90,23 @@ impl Solution for Day08 {
             })
             .collect();
 
-        let (px, py, pz) = {
-            let mut px = input.to_vec();
-            let mut py = input.to_vec();
-            let mut pz = input.to_vec();
+        let mut connections: Vec<Connection> = input
+            .iter()
+            .flat_map(|p1| {
+                input
+                    .iter()
+                    .cloned()
+                    .filter(move |p2| p1 < p2)
+                    .map(|p2| Connection::new(p1, &p2))
+            })
+            .collect();
+        connections.sort_by_key(|c| c.dist());
 
-            px.sort_by_key(|p| p.x);
-            py.sort_by_key(|p| p.y);
-            pz.sort_by_key(|p| p.z);
+        let mut component: HashMap<&Point, usize> = HashMap::new();
 
-            (px, py, pz)
-        };
-
-        let mut component: HashMap<Point, usize> = HashMap::new();
-        let mut min_dist = 0;
-
-        for _ in 0..(if is_example { 10 } else { 1000 }) {
-            let point_a = input
-                .iter()
-                .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz, min_dist)))
-                .unwrap();
-            let point_b = self.find_closest(point_a, &px, &py, &pz, min_dist);
-            min_dist = point_a.dist(&point_b);
-
-            let component_id_a = component.get(&point_a);
-            let component_id_b = component.get(&point_b);
+        for connection in connections.iter().take(if is_example { 10 } else { 1000 }) {
+            let component_id_a = component.get(&connection.point_a);
+            let component_id_b = component.get(&connection.point_b);
 
             match (component_id_a, component_id_b) {
                 (Some(&id_a), Some(&id_b)) => {
@@ -175,15 +123,15 @@ impl Solution for Day08 {
                     }
                 }
                 (Some(&id), None) => {
-                    component.insert(point_b, id);
+                    component.insert(&connection.point_b, id);
                 }
                 (None, Some(&id)) => {
-                    component.insert(point_a.clone(), id);
+                    component.insert(&connection.point_a, id);
                 }
                 (None, None) => {
                     let new_id = component.values().max().unwrap_or(&0) + 1;
-                    component.insert(point_a.clone(), new_id);
-                    component.insert(point_b, new_id);
+                    component.insert(&connection.point_a, new_id);
+                    component.insert(&connection.point_b, new_id);
                 }
             }
         }
@@ -221,36 +169,29 @@ impl Solution for Day08 {
             })
             .collect();
 
-        let (px, py, pz) = {
-            let mut px = input.to_vec();
-            let mut py = input.to_vec();
-            let mut pz = input.to_vec();
+        let mut connections: Vec<Connection> = input
+            .iter()
+            .flat_map(|p1| {
+                input
+                    .iter()
+                    .cloned()
+                    .filter(move |p2| p1 < p2)
+                    .map(|p2| Connection::new(p1, &p2))
+            })
+            .collect();
+        connections.sort_by_key(|c| c.dist());
 
-            px.sort_by_key(|p| p.x);
-            py.sort_by_key(|p| p.y);
-            pz.sort_by_key(|p| p.z);
-
-            (px, py, pz)
-        };
-
-        let mut component: HashMap<Point, usize> = HashMap::new();
-        let mut min_dist = 0;
-
+        let mut component: HashMap<&Point, usize> = HashMap::new();
         let mut last_added_connection = None;
 
+        let mut connection_iter = connections.iter();
         while component.values().collect::<HashSet<_>>().len() != 1 || component.len() < input.len()
         {
-            let point_a = input
-                .iter()
-                .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz, min_dist)))
-                .unwrap();
-            let point_b = self.find_closest(point_a, &px, &py, &pz, min_dist);
-            min_dist = point_a.dist(&point_b);
+            let connection = connection_iter.next().unwrap();
+            let component_id_a = component.get(&connection.point_a);
+            let component_id_b = component.get(&connection.point_b);
 
-            let component_id_a = component.get(&point_a);
-            let component_id_b = component.get(&point_b);
-
-            last_added_connection = Some((point_a.clone(), point_b.clone()));
+            last_added_connection = Some(connection);
 
             match (component_id_a, component_id_b) {
                 (Some(&id_a), Some(&id_b)) => {
@@ -267,20 +208,22 @@ impl Solution for Day08 {
                     }
                 }
                 (Some(&id), None) => {
-                    component.insert(point_b, id);
+                    component.insert(&connection.point_b, id);
                 }
                 (None, Some(&id)) => {
-                    component.insert(point_a.clone(), id);
+                    component.insert(&connection.point_a, id);
                 }
                 (None, None) => {
                     let new_id = component.values().max().unwrap_or(&0) + 1;
-                    component.insert(point_a.clone(), new_id);
-                    component.insert(point_b, new_id);
+                    component.insert(&connection.point_a, new_id);
+                    component.insert(&connection.point_b, new_id);
                 }
             }
         }
 
-        Ok(last_added_connection.map(|(a, b)| a.x * b.x).unwrap())
+        Ok(last_added_connection
+            .map(|c| c.point_a.x * c.point_b.x)
+            .unwrap())
     }
 
     fn get_example(&self) -> Option<&str> {
