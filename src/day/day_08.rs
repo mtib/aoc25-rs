@@ -79,21 +79,32 @@ impl Day08 {
                 _ => unreachable!(),
             };
 
-            let index = self.binary_search(a, points, axis);
+            let approximate_index = self.binary_search(a, points, axis);
+            let mut to_consider = (points.len() / 10).max(6) as i64;
+            let mut di: i64 = 0;
 
-            for neighbor in points
-                .get((index.saturating_sub(20)).max(0)..=(index + 20).min(points.len() - 1))
-                .unwrap()
-            {
-                if neighbor == a {
-                    continue;
+            while to_consider > 0 {
+                for m in [di, -di] {
+                    let neighbor_index = (approximate_index as i64) + m;
+                    if neighbor_index < 0 || neighbor_index >= points.len() as i64 {
+                        to_consider -= 1;
+                        continue;
+                    }
+                    let neighbor = &points[neighbor_index as usize];
+                    if neighbor == a {
+                        continue;
+                    }
+                    let distance = a.dist(neighbor);
+                    if distance <= min_dist {
+                        continue;
+                    }
+                    to_consider -= 1;
+                    if distance < min_distance {
+                        min_distance = distance;
+                        closest = Some(neighbor.clone());
+                    }
                 }
-                let distance = a.dist(neighbor);
-
-                if distance < min_distance && distance > min_dist {
-                    min_distance = distance;
-                    closest = Some(neighbor.clone());
-                }
+                di += 1;
             }
         }
 
@@ -139,7 +150,7 @@ impl Solution for Day08 {
         let mut component: HashMap<Point, usize> = HashMap::new();
         let mut min_dist = 0;
 
-        for i in 0..(if is_example { 10 } else { 1000 }) {
+        for _ in 0..(if is_example { 10 } else { 1000 }) {
             let point_a = input
                 .iter()
                 .min_by_key(|&p| p.dist(&self.find_closest(p, &px, &py, &pz, min_dist)))
@@ -149,20 +160,6 @@ impl Solution for Day08 {
 
             let component_id_a = component.get(&point_a);
             let component_id_b = component.get(&point_b);
-
-            example_println!(
-                "Step {:>2}: Connecting {:?} #{} and {:?} #{} with distance {:.2}",
-                i + 1,
-                point_a,
-                component_id_a
-                    .map(|id| id.to_string())
-                    .unwrap_or_else(|| "?".to_string()),
-                point_b,
-                component_id_b
-                    .map(|id| id.to_string())
-                    .unwrap_or_else(|| "?".to_string()),
-                (min_dist as f64).sqrt()
-            );
 
             match (component_id_a, component_id_b) {
                 (Some(&id_a), Some(&id_b)) => {
@@ -197,17 +194,10 @@ impl Solution for Day08 {
             by_component.entry(comp_id).or_default().push(point);
         }
 
-        for (k, v) in by_component.iter() {
-            example_println!("component {} (len={}): {:?}", k, v.len(), v);
-        }
-
         let mut component_sizes: Vec<i64> =
             by_component.iter().map(|(_, v)| v.len() as i64).collect();
         component_sizes.sort();
 
-        example_println!("component_sizes {:?}", component_sizes);
-
-        // 286209 too high
         Ok(component_sizes
             .into_iter()
             .rev()
