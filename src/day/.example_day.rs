@@ -10,7 +10,7 @@ impl Solution for DayXX {
     }
 
     fn get_example(&self) -> Option<&str> {
-        Some(r#"XXX"#)
+        Some(r#"ABC"#)
     }
 }
 
