@@ -1,20 +1,46 @@
-use std::{cmp::{max, min}, collections::HashSet};
+use std::cmp::{max, min};
 
-use crate::{day::Solution, example_println, util::number::parse_u8_slice_to_i64};
+use crate::{day::Solution, util::number::parse_u8_slice_to_i64};
 
 use super::Day;
 
 struct Day09;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct Tile {
-    x: i64,
-    y: i64,
+struct Edge<'a> {
+    start: &'a (i64, i64),
+    end: &'a (i64, i64),
 }
 
-impl std::fmt::Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
+impl<'a> Edge<'a> {
+    fn is_vertical(&self) -> bool {
+        self.start.0 == self.end.0
+    }
+}
+
+struct Rect<'a> {
+    point_1: &'a (i64, i64),
+    point_2: &'a (i64, i64),
+}
+
+impl<'a> Rect<'a> {
+    fn interior_intersects(&self, edge: &Edge) -> bool {
+        let rect_x1 = min(self.point_1.0, self.point_2.0) + 1;
+        let rect_x2 = max(self.point_1.0, self.point_2.0) - 1;
+        let rect_y1 = min(self.point_1.1, self.point_2.1) + 1;
+        let rect_y2 = max(self.point_1.1, self.point_2.1) - 1;
+        if edge.is_vertical() {
+            let x = edge.start.0;
+            let y1 = min(edge.start.1, edge.end.1);
+            let y2 = max(edge.start.1, edge.end.1);
+
+            x >= rect_x1 && x <= rect_x2 && !(y1 > rect_y2 || y2 < rect_y1)
+        } else {
+            let y = edge.start.1;
+            let x1 = min(edge.start.0, edge.end.0);
+            let x2 = max(edge.start.0, edge.end.0);
+
+            y >= rect_y1 && y <= rect_y2 && !(x1 > rect_x2 || x2 < rect_x1)
+        }
     }
 }
 
@@ -24,94 +50,93 @@ impl Solution for Day09 {
     }
 
     fn run_part_1(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
-        let tiles: Vec<_> = input.trim_ascii_end().split(|&c| c == b'\n').map(
-            |line| {
+        let tiles: Vec<_> = input
+            .trim_ascii_end()
+            .split(|&c| c == b'\n')
+            .map(|line| {
                 let mut parts = line.split(|&c| c == b',');
-                (parse_u8_slice_to_i64(parts.next().unwrap()), parse_u8_slice_to_i64(parts.next().unwrap()))
-            },
-        ).collect();
+                (
+                    parse_u8_slice_to_i64(parts.next().unwrap()),
+                    parse_u8_slice_to_i64(parts.next().unwrap()),
+                )
+            })
+            .collect();
 
-        let tile_pairs = tiles.iter().flat_map(|&(x1, y1)| {
-            tiles.iter().filter_map(move |&(x2, y2)| {
-                if (x1, y1) >= (x2, y2) {
+        let tile_pairs = tiles.iter().flat_map(|t1| {
+            tiles.iter().filter_map(move |t2| {
+                if t1 >= t2 {
                     return None;
                 }
 
-                Some(((x1, y1), (x2, y2)))
+                Some((t1, t2))
             })
         });
 
-        Ok(tile_pairs.map(|((x1, y1), (x2,y2))| ((y2-y1).abs() + 1) * ((x2-x1).abs() + 1)).max().unwrap())
+        Ok(tile_pairs
+            .map(|((x1, y1), (x2, y2))| ((y2 - y1).abs() + 1) * ((x2 - x1).abs() + 1))
+            .max()
+            .unwrap())
     }
 
     fn run_part_2(&self, input: &[u8]) -> Result<i64, Box<dyn std::error::Error>> {
-        let mut allowable: HashSet<Tile> = HashSet::new();
-        let tiles: Vec<_> = input.trim_ascii_end().split(|&c| c == b'\n').map(
-            |line| {
+        let tiles: Vec<_> = input
+            .trim_ascii_end()
+            .split(|&c| c == b'\n')
+            .map(|line| {
                 let mut parts = line.split(|&c| c == b',');
-                (parse_u8_slice_to_i64(parts.next().unwrap()), parse_u8_slice_to_i64(parts.next().unwrap()))
-            },
-        ).collect();
+                (
+                    parse_u8_slice_to_i64(parts.next().unwrap()),
+                    parse_u8_slice_to_i64(parts.next().unwrap()),
+                )
+            })
+            .collect();
 
-        let mut min_x = i64::MAX;
-        let mut min_y = i64::MAX;
-        let mut max_x = 0;
-        let mut max_y = 0;
-
+        let mut edges = Vec::with_capacity(tiles.len() + 1);
         for i in 0..tiles.len() {
-            let (x1, y1) = tiles[i];
-            let (x2, y2) = tiles[(i + 1) % tiles.len()];
-
-            if x1 < min_x {
-                min_x = x1;
-            }
-            if x1 > max_x {
-                max_x = x1;
-            }
-            if y1 < min_y {
-                min_y = y1;
-            }
-            if y1 > max_y {
-                max_y = y1;
-            }
-            
-            for y in min(y1, y2)..=max(y1, y2) {
-                for x in min(x1, x2)..=max(x1, x2) {
-                    allowable.insert(Tile { x, y });
-                }
-            }
+            edges.push(Edge {
+                start: unsafe { tiles.get_unchecked(i) },
+                end: unsafe { tiles.get_unchecked((i + 1) % tiles.len()) },
+            });
         }
 
-        let tile_pairs = tiles.iter().flat_map(|&(x1, y1)| {
-            let walls = &allowable;
-            tiles.iter().filter_map(move |&(x2, y2)| {
-                if (x1, y1) >= (x2, y2) {
+        let tile_pairs = tiles.iter().flat_map(|t1| {
+            let edges = &edges;
+            tiles.iter().filter_map(move |t2| {
+                if t1 >= t2 {
                     return None;
                 }
 
-                for wall in walls {
-                    if (wall.x > min(x1, x2) && wall.x < max(x1, x2)) &&
-                       (wall.y > min(y1, y2) && wall.y < max(y1, y2)) {
+                let rect = Rect {
+                    point_1: t1,
+                    point_2: t2,
+                };
+                for edge in edges {
+                    if rect.interior_intersects(edge) {
                         return None;
                     }
                 }
 
-                Some(((x1, y1), (x2, y2)))
+                Some((t1, t2))
             })
         });
 
-        Ok(tile_pairs.map(|((x1, y1), (x2,y2))| ((y2-y1).abs() + 1) * ((x2-x1).abs() + 1)).max().unwrap())
+        Ok(tile_pairs
+            .map(|((x1, y1), (x2, y2))| ((y2 - y1).abs() + 1) * ((x2 - x1).abs() + 1))
+            .max()
+            .unwrap())
     }
 
     fn get_example(&self) -> Option<&str> {
-        Some(r#"7,1
+        Some(
+            r#"7,1
 11,1
 11,7
 9,7
 9,5
 2,5
 2,3
-7,3"#)
+7,3"#,
+        )
     }
 }
 
