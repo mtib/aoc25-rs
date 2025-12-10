@@ -150,7 +150,7 @@ impl Solution for Day10 {
             .collect();
 
         Ok(machines
-            .iter()
+            .par_iter()
             .map(|m| m.bfs_least_buttons_joltage() as i64)
             .sum())
     }
