@@ -8,3 +8,4 @@ dotenv = "0.15.0"
 rayon = "1.11.0"
 regex = "1.12.2"
 reqwest = { version = "0.12.24", features = ["blocking"]}
+z3 = { version = "0.19.5", features = ["gh-release"]}

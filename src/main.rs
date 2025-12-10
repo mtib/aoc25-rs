@@ -94,7 +94,7 @@ impl dyn Day {
 
 fn determine_run_targets(args: &[String], available_days: &[Box<dyn Day>]) -> Vec<RunTarget> {
     let mut targets = Vec::new();
-    let regex = regex::Regex::new(r"(\d)+(\.\d)?([ae])?").unwrap();
+    let regex = regex::Regex::new(r"(\d+)(\.\d)?([ae])?").unwrap();
     for arg in args {
         if arg == "a" {
             for day in available_days {
