@@ -1,32 +1,16 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::from_utf8_unchecked,
-};
+use std::{collections::HashMap, mem::swap};
 
+use matrixmultiply::sgemm;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
     day::{Solution, get_input_mode},
-    example_println,
     util::input::PuzzleInputType,
 };
 
 use super::Day;
 
 struct Day11;
-
-static PART_2_PATHS: &'static [&[(&[u8], &[u8], Option<&[&[u8]]>)]] = &[
-    &[
-        (b"svr", b"dac", None),
-        (b"dac", b"fft", Some(&[b"svr"])),
-        (b"fft", b"out", Some(&[b"dac", b"svr"])),
-    ],
-    &[
-        (b"svr", b"fft", None),
-        (b"fft", b"dac", Some(&[b"svr"])),
-        (b"dac", b"out", Some(&[b"fft", b"svr"])),
-    ],
-];
 
 impl Day11 {
     fn parse_input(input: &[u8]) -> HashMap<&[u8], Vec<&[u8]>> {
@@ -47,58 +31,73 @@ impl Day11 {
         graph
     }
 
-    fn can_reach<'a, 'b>(
+    fn count_paths_adj<'a>(
         from: &'a [u8],
         to: &'a [u8],
         graph: &'a HashMap<&[u8], Vec<&[u8]>>,
-        path: &'b mut Vec<&'a [u8]>,
-        avoid: &HashSet<&'a [u8]>,
-    ) -> bool {
-        if from == to {
-            return true;
-        }
-        if avoid.contains(&from) {
-            return false;
-        }
-        path.push(from);
-
-        let neighbors = match graph.get(from) {
-            Some(n) => n,
-            None => return false,
+    ) -> i64 {
+        let mut adjacency_list: Vec<Vec<f32>> = Vec::new();
+        let ordering = {
+            let mut ordering = graph.keys().cloned().collect::<Vec<_>>();
+            ordering.push(b"out");
+            ordering
         };
 
-        for &neighbor in neighbors.iter() {
-            if Self::can_reach(neighbor, to, graph, path, avoid) {
-                return true;
+        for &node in ordering.iter() {
+            let mut edges = Vec::new();
+            for &other_node in ordering.iter() {
+                if let Some(neighbors) = graph.get(node) {
+                    if neighbors.contains(&other_node) {
+                        edges.push(1.0);
+                    } else {
+                        edges.push(0.0);
+                    }
+                } else {
+                    edges.push(0.0);
+                }
             }
+            adjacency_list.push(edges);
         }
 
-        path.pop();
-        false
-    }
+        let from_index = ordering.iter().position(|&n| n == from).unwrap();
+        let to_index = ordering.iter().position(|&n| n == to).unwrap();
 
-    fn reachable_from<'a, 'b>(
-        from: &'a [u8],
-        graph: &'a HashMap<&[u8], Vec<&[u8]>>,
-        path: &'b mut Vec<&'a [u8]>,
-        reachable: &mut HashSet<&'a [u8]>,
-    ) {
-        path.push(from);
-
-        let neighbors = match graph.get(from) {
-            Some(n) => n,
-            None => return,
-        };
-
-        for &neighbor in neighbors.iter() {
-            if !reachable.insert(neighbor) {
-                // Will not discover new children
-                continue;
+        let n = ordering.len();
+        let mut count = 0.0;
+        let adjacency_matrix = adjacency_list.concat();
+        let mut adjacency_matrix_squared = adjacency_matrix.clone();
+        let mut temp = vec![0.0; n * n];
+        loop {
+            if (adjacency_matrix_squared[from_index * n + to_index]) > 0.0 {
+                count += adjacency_matrix_squared[from_index * n + to_index];
             }
-            Self::reachable_from(neighbor, graph, path, reachable);
+
+            if adjacency_matrix_squared.iter().all(|&x| x == 0.0) {
+                break;
+            }
+
+            unsafe {
+                sgemm(
+                    n,
+                    n,
+                    n,
+                    1.0,
+                    adjacency_matrix_squared.as_ptr(),
+                    n as isize,
+                    1,
+                    adjacency_matrix.as_ptr(),
+                    n as isize,
+                    1,
+                    0.0,
+                    temp.as_mut_ptr(),
+                    n as isize,
+                    1,
+                );
+            }
+            swap(&mut adjacency_matrix_squared, &mut temp);
         }
 
-        path.pop();
+        count as i64
     }
 
     fn count_paths(
@@ -152,52 +151,10 @@ impl Day11 {
     }
 
     fn count_srv_to_out_over_dac_and_fft(graph: &HashMap<&[u8], Vec<&[u8]>>) -> i64 {
-        PART_2_PATHS
+        [(b"svr", b"fft"), (b"fft", b"dac"), (b"dac", b"out")]
             .par_iter()
-            .filter(|path| {
-                let middle = path[1];
-                let mut avoid_end = HashSet::new();
-                Self::reachable_from(middle.1, graph, &mut Vec::new(), &mut avoid_end);
-                if !Self::can_reach(middle.0, middle.1, graph, &mut Vec::new(), &avoid_end) {
-                    unsafe {
-                        example_println!(
-                            "Cannot reach {:?} to {:?}",
-                            from_utf8_unchecked(middle.0),
-                            from_utf8_unchecked(middle.1)
-                        );
-                    }
-                    return false;
-                } else {
-                    unsafe {
-                        example_println!(
-                            "Can reach {:?} to {:?}",
-                            from_utf8_unchecked(middle.0),
-                            from_utf8_unchecked(middle.1)
-                        );
-                    }
-                }
-                true
-            })
-            .map(|path| {
-                path.par_iter()
-                    .map(|&(from, to, must_not)| {
-                        let mut reachable = HashSet::new();
-                        Self::reachable_from(to, graph, &mut Vec::new(), &mut reachable);
-                        if let Some(must_not) = must_not {
-                            must_not.iter().for_each(|&negative_node| {
-                                reachable.insert(negative_node);
-                            });
-                        }
-                        Self::count_paths(
-                            from,
-                            to,
-                            graph,
-                            Some(reachable.iter().cloned().collect::<Vec<_>>().as_slice()),
-                        )
-                    })
-                    .product::<i64>()
-            })
-            .sum()
+            .map(|&(from, to)| Self::count_paths_adj(from, to, graph))
+            .product()
     }
 
     fn get_exmaple_part_2(&self) -> &'static str {

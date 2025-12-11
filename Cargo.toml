@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 dotenv = "0.15.0"
+matrixmultiply = { version = "0.3.10", features = ["std", "threading"] }
 rayon = "1.11.0"
 regex = "1.12.2"
 reqwest = { version = "0.12.24", features = ["blocking"]}
