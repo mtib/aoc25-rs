@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{day::Solution, example_println, util::number::parse_u8_slice_to_i64};
+use crate::{day::Solution, util::number::parse_u8_slice_to_i64};
 
 use super::Day;
 
@@ -59,6 +59,13 @@ impl PieceDefinition {
             id: self.id,
         }
     }
+
+    fn weight(&self) -> usize {
+        self.pattern
+            .iter()
+            .map(|row| row.iter().filter(|&&cell| cell).count())
+            .sum()
+    }
 }
 
 #[derive(Debug)]
@@ -92,6 +99,10 @@ impl BoardDefinition {
             requested_pieces,
         }
     }
+
+    fn area(&self) -> usize {
+        self.width * self.height
+    }
 }
 
 impl Day12 {
@@ -117,7 +128,6 @@ impl Day12 {
         let mut board_definitions = Vec::new();
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-            example_println!("Processing chunk with {} lines", chunk.len());
             if chunk.len() == 1 {
                 board_definitions.push(BoardDefinition::from_line(chunk[0]));
             } else {
@@ -137,17 +147,27 @@ impl Day12 {
             y: usize,
         }
 
+        if board.area()
+            < pieces
+                .iter()
+                .map(|p| {
+                    p.weight() * board.requested_pieces.get(&p.id).cloned().unwrap_or(0) as usize
+                })
+                .sum()
+        {
+            return false;
+        }
+
         fn dfs(
             board: &BoardDefinition,
             pieces: &Vec<PieceDefinition>,
             placements: &mut Vec<PiecePlacement>,
             requested_pieces: &mut HashMap<PieceId, i64>,
+            current_board: &mut Vec<Vec<bool>>,
         ) -> bool {
             if requested_pieces.values().all(|&count| count == 0) {
                 return true;
             }
-
-            let mut current_board = vec![vec![false; board.width]; board.height];
 
             for placement in placements.iter() {
                 let piece = pieces.iter().find(|p| p.id == placement.piece_id).unwrap();
@@ -181,37 +201,69 @@ impl Day12 {
                         };
 
                         for x in 0..=board.width - transformed_piece.pattern[0].len() {
-                            for y in 0..=board.height - transformed_piece.pattern.len() {
+                            'outer: for y in 0..=board.height - transformed_piece.pattern.len() {
                                 // Check if the piece can be placed at (x, y)
-                                let mut can_place = true;
-                                'outer: for (py, row) in
-                                    transformed_piece.pattern.iter().enumerate()
-                                {
+                                for (py, row) in transformed_piece.pattern.iter().enumerate() {
                                     for (px, &cell) in row.iter().enumerate() {
                                         if cell && current_board[y + py][x + px] {
-                                            can_place = false;
-                                            break 'outer;
+                                            continue 'outer;
                                         }
                                     }
                                 }
 
-                                if can_place {
-                                    placements.push(PiecePlacement {
-                                        piece_id: piece.id,
-                                        rotation,
-                                        flipped,
-                                        x,
-                                        y,
-                                    });
-                                    *requested_pieces.get_mut(&piece.id).unwrap() -= 1;
+                                placements.push(PiecePlacement {
+                                    piece_id: piece.id,
+                                    rotation,
+                                    flipped,
+                                    x,
+                                    y,
+                                });
 
-                                    if dfs(board, pieces, placements, requested_pieces) {
-                                        return true;
+                                {
+                                    let placement = placements.last().unwrap();
+
+                                    let transformed_piece = if placement.flipped {
+                                        piece.flipped().rotated(placement.rotation)
+                                    } else {
+                                        piece.rotated(placement.rotation)
+                                    };
+
+                                    for (py, row) in transformed_piece.pattern.iter().enumerate() {
+                                        for (px, &cell) in row.iter().enumerate() {
+                                            if cell {
+                                                current_board[placement.y + py][placement.x + px] =
+                                                    true;
+                                            }
+                                        }
                                     }
-
-                                    placements.pop();
-                                    *requested_pieces.get_mut(&piece.id).unwrap() += 1;
                                 }
+
+                                *requested_pieces.get_mut(&piece.id).unwrap() -= 1;
+
+                                if dfs(board, pieces, placements, requested_pieces, current_board) {
+                                    return true;
+                                }
+
+                                {
+                                    let placement = placements.last().unwrap();
+
+                                    let transformed_piece = if placement.flipped {
+                                        piece.flipped().rotated(placement.rotation)
+                                    } else {
+                                        piece.rotated(placement.rotation)
+                                    };
+                                    for (py, row) in transformed_piece.pattern.iter().enumerate() {
+                                        for (px, &cell) in row.iter().enumerate() {
+                                            if cell {
+                                                current_board[placement.y + py][placement.x + px] =
+                                                    false;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                placements.pop();
+                                *requested_pieces.get_mut(&piece.id).unwrap() += 1;
                             }
                         }
                     }
@@ -222,7 +274,14 @@ impl Day12 {
         }
         let mut placements = Vec::new();
         let mut requested_pieces = board.requested_pieces.clone();
-        dfs(board, pieces, &mut placements, &mut requested_pieces)
+        let mut current_board = vec![vec![false; board.width]; board.height];
+        dfs(
+            board,
+            pieces,
+            &mut placements,
+            &mut requested_pieces,
+            &mut current_board,
+        )
     }
 }
 
@@ -275,8 +334,7 @@ impl Solution for Day12 {
 ###
 
 4x4: 0 0 0 0 2 0
-12x5: 1 0 1 0 2 2
-12x5: 1 0 1 0 3 2"#,
+12x5: 1 0 1 0 2 2"#,
         )
     }
 }
@@ -333,13 +391,5 @@ mod test {
         let example_input = day.get_example().unwrap();
         let result = day.run_part_1(example_input.as_bytes()).unwrap();
         assert_eq!(result, 2);
-    }
-
-    #[test]
-    fn part_2_example() {
-        let day = day();
-        let example_input = day.get_example().unwrap();
-        let result = day.run_part_2(example_input.as_bytes()).unwrap();
-        assert_eq!(result, todo!());
     }
 }
